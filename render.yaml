@@ -1,0 +1,20 @@
+# Render Blueprint — backend API (Python/FastAPI)
+# Docs: https://render.com/docs/blueprint-spec
+# Connect repo, then add env vars in Dashboard (DATABASE_URL, UNBOUND_API_KEY, etc.)
+
+services:
+  - type: web
+    name: agentic-workflow-builder-api
+    runtime: python
+    region: oregon
+
+    # Repo root; app lives in backend/
+    rootDir: backend
+
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+      # Add in Render Dashboard: DATABASE_URL, UNBOUND_API_KEY, UNBOUND_API_URL (optional), and any alert/SMTP vars
