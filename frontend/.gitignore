@@ -13,7 +13,8 @@ node_modules
 dist
 dist-ssr
 
-# Env
+# Env (keep .env.example)
+.env
 .env.local
 .env.*.local
 

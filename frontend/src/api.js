@@ -31,7 +31,10 @@ export const api = {
     request(`/workflows/${workflowId}/steps/${stepId}`, { method: 'DELETE' }),
 
   // Executions
+  executeWorkflow: (workflowId) =>
+    request(`/workflows/${workflowId}/execute`, { method: 'POST' }),
   listExecutions: (workflowId) =>
     request(workflowId != null ? `/executions?workflow_id=${workflowId}` : '/executions'),
   getExecution: (id) => request(`/executions/${id}`),
+  getExecutionAttempts: (id) => request(`/executions/${id}/attempts`),
 }

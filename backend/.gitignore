@@ -1,0 +1,9 @@
+# Env (keep .env.example)
+.env
+
+# DB
+*.db
+
+# Python
+__pycache__/
+*.py[cod]

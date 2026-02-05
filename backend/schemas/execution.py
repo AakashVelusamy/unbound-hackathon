@@ -45,3 +45,8 @@ class ExecutionListItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class ExecuteResponse(BaseModel):
+    """Response from POST /workflows/{id}/execute."""
+    execution_id: int
