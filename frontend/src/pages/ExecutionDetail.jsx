@@ -6,7 +6,6 @@ import { downloadJson, executionSnapshotFilename } from '../lib/export'
 
 const POLL_INTERVAL_MS = 1500
 const TERMINAL_STATUSES = ['completed', 'failed']
-const PAUSED_STATUS = 'paused'
 
 function formatTime(iso) {
   if (!iso) return '—'
@@ -34,8 +33,6 @@ export default function ExecutionDetail() {
   const [workflow, setWorkflow] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [approveNote, setApproveNote] = useState('')
-  const [approving, setApproving] = useState(false)
   const pollRef = useRef(null)
 
   const fetchExecution = () => {
@@ -63,20 +60,11 @@ export default function ExecutionDetail() {
 
   useEffect(() => {
     if (!executionId || !execution) return
-    if (TERMINAL_STATUSES.includes(execution.status) || execution.status === PAUSED_STATUS) return
+    if (TERMINAL_STATUSES.includes(execution.status)) return
 
     const id = setInterval(fetchExecution, POLL_INTERVAL_MS)
     return () => clearInterval(id)
   }, [executionId, execution?.status])
-
-  const handleApprove = () => {
-    if (!executionId) return
-    setApproving(true)
-    api.approveExecution(executionId, { note: approveNote || undefined })
-      .then(() => fetchExecution())
-      .catch((e) => setError(e.message))
-      .finally(() => setApproving(false))
-  }
 
   const handleSnapshot = () => {
     if (!execution || !workflow) return
@@ -113,10 +101,7 @@ export default function ExecutionDetail() {
 
   if (!execution) return null
 
-  const snapshotSteps = execution.workflow_definition_snapshot?.steps
-  const steps = (snapshotSteps && snapshotSteps.length > 0)
-    ? snapshotSteps.sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
-    : (workflow?.steps ?? [])
+  const steps = workflow?.steps ?? []
   const attemptsByStep = (execution.step_attempts ?? []).reduce((acc, a) => {
     if (!acc[a.step_id]) acc[a.step_id] = []
     acc[a.step_id].push(a)
@@ -132,8 +117,7 @@ export default function ExecutionDetail() {
     0
   )
 
-  const isLive = !TERMINAL_STATUSES.includes(execution.status) && execution.status !== PAUSED_STATUS
-  const isPaused = execution.status === PAUSED_STATUS
+  const isLive = !TERMINAL_STATUSES.includes(execution.status)
   const statusLabel =
     execution.status === 'completed'
       ? 'Completed'
@@ -141,9 +125,7 @@ export default function ExecutionDetail() {
         ? 'Failed'
         : execution.status === 'running'
           ? 'Running'
-          : execution.status === PAUSED_STATUS
-            ? 'Paused (approval required)'
-            : execution.status
+          : execution.status
 
   return (
     <div className="space-y-8">
@@ -166,9 +148,7 @@ export default function ExecutionDetail() {
                   ? 'bg-emerald-100 text-emerald-800'
                   : execution.status === 'failed'
                     ? 'bg-red-100 text-red-800'
-                    : execution.status === PAUSED_STATUS
-                      ? 'bg-violet-100 text-violet-800'
-                      : 'bg-amber-100 text-amber-800'
+                    : 'bg-amber-100 text-amber-800'
               }`}
             >
               {isLive && (
@@ -183,25 +163,6 @@ export default function ExecutionDetail() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {isPaused && (
-          <div className="flex flex-wrap items-end gap-3">
-            <input
-              type="text"
-              value={approveNote}
-              onChange={(e) => setApproveNote(e.target.value)}
-              placeholder="Approval note (optional)"
-              className="rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
-            />
-            <button
-              type="button"
-              onClick={handleApprove}
-              disabled={approving}
-              className="rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-violet-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2"
-            >
-              {approving ? 'Resuming…' : 'Approve & continue'}
-            </button>
-          </div>
-        )}
           <button
             type="button"
             onClick={handleSnapshot}
@@ -212,25 +173,10 @@ export default function ExecutionDetail() {
         </div>
       </div>
 
-      {isPaused && (
-        <div className="rounded-2xl border border-violet-200 bg-violet-50 p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-violet-800">Waiting for approval</h2>
-          <p className="mt-1 text-sm text-violet-700">This step is an approval gate. Click &quot;Approve & continue&quot; above to resume the workflow.</p>
-        </div>
-      )}
-
-      {/* Execution narrative */}
-      {execution.narrative && (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-700">Run summary</h2>
-          <p className="mt-2 text-sm text-slate-700">{execution.narrative}</p>
-        </div>
-      )}
-
-      {/* Credits used */}
+      {/* Cost & tokens summary */}
       {(totalTokens > 0 || totalCost > 0) && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-700">Credits used</h2>
+          <h2 className="text-sm font-semibold text-slate-700">Cost & usage</h2>
           <div className="mt-3 flex flex-wrap gap-6">
             {totalTokens > 0 && (
               <div>
@@ -241,7 +187,7 @@ export default function ExecutionDetail() {
             {totalCost > 0 && (
               <div>
                 <span className="text-2xl font-bold text-emerald-600">{formatCost(totalCost)}</span>
-                <span className="ml-1 text-sm text-slate-500">cost</span>
+                <span className="ml-1 text-sm text-slate-500">estimated cost</span>
               </div>
             )}
           </div>
@@ -302,68 +248,28 @@ export default function ExecutionDetail() {
                   </div>
                   <div className="p-5">
                     <p className="text-sm text-slate-600 line-clamp-2">{step.prompt}</p>
-
-                    {/* Retry visualization: each attempt */}
-                    {attempts.length > 0 && (
-                      <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
-                        <p className="text-xs font-semibold text-slate-500">Attempts</p>
-                        {attempts.map((att) => (
-                          <div
-                            key={att.id}
-                            className={`flex flex-wrap items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                              att.criteria_passed ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'
-                            }`}
-                          >
-                            <span>{att.criteria_passed ? '✓' : '✗'}</span>
-                            <span className="font-medium">Attempt {att.attempt_number}</span>
-                            {att.failure_type && (
-                              <span className="rounded bg-white/60 px-1.5 py-0.5 text-xs">
-                                {att.failure_type}
-                              </span>
-                            )}
-                            {att.failure_reason && (
-                              <span className="text-xs opacity-90">— {att.failure_reason}</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                    {!last && execution.status === 'running' && idx === execution.current_step_index && (
+                      <p className="mt-3 text-sm text-amber-600">Running…</p>
                     )}
-
-                    {/* Failure explanation (deterministic) */}
-                    {last && !last.criteria_passed && last.failure_reason && (
-                      <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-4">
-                        <p className="text-sm font-semibold text-red-800">Why it failed</p>
-                        <p className="mt-1 text-sm text-red-700">
-                          Step {idx + 1} failed because: {last.failure_reason}
-                        </p>
-                        {last.failure_type && (
-                          <p className="mt-1 text-xs text-red-600">Classification: {last.failure_type}</p>
+                    {last && (
+                      <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+                        {last.criteria_passed === true && (
+                          <p className="text-sm font-medium text-emerald-600">Criteria passed</p>
+                        )}
+                        {last.failure_reason && (
+                          <p className="text-sm text-red-600">Failure: {last.failure_reason}</p>
                         )}
                         {last.response && (
-                          <details className="mt-2">
-                            <summary className="cursor-pointer text-xs font-medium text-red-600">
-                              Received output
+                          <details className="group">
+                            <summary className="cursor-pointer text-sm text-slate-500 transition hover:text-slate-700">
+                              Last response
                             </summary>
-                            <pre className="mt-1 max-h-32 overflow-auto rounded bg-white/80 p-2 text-xs text-slate-700 whitespace-pre-wrap">
+                            <pre className="mt-2 max-h-48 overflow-auto rounded-xl bg-slate-50 p-4 text-xs text-slate-700 whitespace-pre-wrap break-words">
                               {last.response}
                             </pre>
                           </details>
                         )}
                       </div>
-                    )}
-
-                    {!last && execution.status === 'running' && idx === execution.current_step_index && (
-                      <p className="mt-3 text-sm text-amber-600">Running…</p>
-                    )}
-                    {last?.response && (
-                      <details className="mt-3 group">
-                        <summary className="cursor-pointer text-sm text-slate-500 transition hover:text-slate-700">
-                          Last response
-                        </summary>
-                        <pre className="mt-2 max-h-48 overflow-auto rounded-xl bg-slate-50 p-4 text-xs text-slate-700 whitespace-pre-wrap break-words">
-                          {last.response}
-                        </pre>
-                      </details>
                     )}
                   </div>
                 </li>

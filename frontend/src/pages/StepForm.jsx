@@ -4,21 +4,8 @@ import { api } from '../api'
 import CriteriaEditor from '../components/CriteriaEditor'
 
 const MODELS = [
-  {
-    value: 'auto',
-    label: 'Auto (picks best model from completion criteria)',
-    summary: 'Uses kimi-k2-instruct-0905 for regex/valid_json (strict format); kimi-k2p5 for exploratory/semantic checks.',
-  },
-  {
-    value: 'kimi-k2p5',
-    label: 'Kimi K2 5',
-    summary: 'Best for: code generation, reasoning, long outputs, exploratory steps. More creative; completion criteria can be loose (e.g. contains string, semantic).',
-  },
-  {
-    value: 'kimi-k2-instruct-0905',
-    label: 'Kimi K2 Instruct 0905',
-    summary: 'Best for: JSON output, regex-sensitive responses, strict formatting. Use when output format matters more than creativity (regex, valid_json).',
-  },
+  { value: 'kimi-k2p5', label: 'Kimi K2 5' },
+  { value: 'kimi-k2-instruct-0905', label: 'Kimi K2 Instruct 0905' },
 ]
 
 const CONTEXT_STRATEGIES = [
@@ -36,7 +23,6 @@ export default function StepForm() {
   const [prompt, setPrompt] = useState('')
   const [completionCriteria, setCompletionCriteria] = useState({ type: 'contains_string', config: { value: '' }, max_retries: 3 })
   const [contextStrategy, setContextStrategy] = useState('full')
-  const [requiresApproval, setRequiresApproval] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [immutable, setImmutable] = useState(false)
@@ -60,7 +46,6 @@ export default function StepForm() {
         setPrompt(step.prompt)
         setCompletionCriteria(step.completion_criteria ?? { type: 'contains_string', config: {}, max_retries: 3 })
         setContextStrategy(step.context_strategy ?? 'full')
-        setRequiresApproval(step.requires_approval ?? false)
       }
     }
   }, [workflow, stepId, isEdit])
@@ -82,7 +67,6 @@ export default function StepForm() {
       prompt: prompt.trim(),
       completion_criteria: criteria,
       context_strategy: contextStrategy,
-      requires_approval: requiresApproval,
     }
     const promise = isEdit
       ? api.updateStep(workflowId, stepId, body)
@@ -152,20 +136,6 @@ export default function StepForm() {
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
-          {MODELS.find((m) => m.value === model)?.summary && (
-            <p className="mt-2 text-sm text-slate-500">
-              {MODELS.find((m) => m.value === model).summary}
-            </p>
-          )}
-          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-            <p className="font-medium text-slate-700">Model difference (short)</p>
-            <p className="mt-1">
-              The two models differ mainly in <strong>purpose</strong>, <strong>output style</strong>, and <strong>reliability vs flexibility</strong>.
-              Use <strong>kimi-k2p5</strong> for thinking and generating (exploratory steps, code, reasoning; looser criteria).
-              Use <strong>kimi-k2-instruct-0905</strong> for formatting and obeying (strict JSON/regex, validation steps).
-              Typical pattern: generate with k2p5 → structure/validate with k2-instruct.
-            </p>
-          </div>
         </div>
 
         <div>
@@ -183,20 +153,6 @@ export default function StepForm() {
         <div>
           <label className="block text-sm font-medium text-slate-700">Completion criteria</label>
           <CriteriaEditor value={completionCriteria} onChange={setCompletionCriteria} />
-        </div>
-
-        <div>
-          <label className="flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              checked={requiresApproval}
-              onChange={(e) => setRequiresApproval(e.target.checked)}
-              disabled={immutable}
-              className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-            />
-            <span className="text-sm font-medium text-slate-700">Requires approval (HITL)</span>
-          </label>
-          <p className="mt-1 text-xs text-slate-500">Pause workflow at this step until a human approves.</p>
         </div>
 
         <div>

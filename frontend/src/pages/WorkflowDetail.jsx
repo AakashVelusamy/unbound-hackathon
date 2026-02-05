@@ -16,7 +16,6 @@ import {
 import { api } from '../api'
 import StepCard from '../components/StepCard'
 import { downloadJson, workflowExportFilename } from '../lib/export'
-import { estimateWorkflowCredits, formatCost } from '../lib/cost'
 
 export default function WorkflowDetail() {
   const { id: workflowId } = useParams()
@@ -205,36 +204,6 @@ export default function WorkflowDetail() {
         </div>
       )}
 
-      {/* Retry budget + Credits estimated */}
-      {steps.length > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-700">Retry budget & credits estimated</h2>
-          <div className="mt-3 flex flex-wrap gap-6">
-            <div>
-              <span className="font-medium text-surface">
-                Total retry budget: {steps.reduce((s, st) => s + (st.completion_criteria?.max_retries ?? 3), 0)}
-              </span>
-              <span className="ml-1 text-sm text-slate-500">max attempts across steps</span>
-            </div>
-            {(() => {
-              const { totalTokens, totalCost } = estimateWorkflowCredits(steps)
-              return (
-                <>
-                  <div>
-                    <span className="font-medium text-surface">~{totalTokens.toLocaleString()}</span>
-                    <span className="ml-1 text-sm text-slate-500">tokens estimated</span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-emerald-600">{formatCost(totalCost)}</span>
-                    <span className="ml-1 text-sm text-slate-500">credits estimated</span>
-                  </div>
-                </>
-              )
-            })()}
-          </div>
-        </div>
-      )}
-
       {steps.length === 0 ? (
         <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-14 text-center shadow-sm">
           <p className="text-slate-500">No steps yet.</p>
@@ -292,9 +261,7 @@ export default function WorkflowDetail() {
                           ? 'bg-emerald-100 text-emerald-800'
                           : ex.status === 'failed'
                             ? 'bg-red-100 text-red-800'
-                            : ex.status === 'paused'
-                              ? 'bg-violet-100 text-violet-800'
-                              : 'bg-amber-100 text-amber-800'
+                            : 'bg-amber-100 text-amber-800'
                       }`}
                     >
                       {ex.status}

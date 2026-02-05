@@ -16,14 +16,6 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
-    # Email alerts: send mail when workflow completes/fails/paused (optional)
-    alert_email_to: str = ""
-    smtp_host: str = ""
-    smtp_port: int = 587
-    smtp_user: str = ""
-    smtp_password: str = ""
-    smtp_from: str = ""
-
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

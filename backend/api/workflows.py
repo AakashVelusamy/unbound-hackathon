@@ -1,7 +1,6 @@
 """CRUD API for workflows and steps. All DB access via PostgreSQL stored functions."""
 import logging
 import threading
-from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -73,26 +72,9 @@ def execute_workflow(
     if any(r["status"] == WorkflowExecutionStatus.RUNNING.value for r in rows):
         raise HTTPException(
             status_code=409,
-            detail="A workflow run is already in progress. Wait for it to finish or poll GET /executions.",
+            detail="This workflow already has a run in progress. Wait for it to finish or poll GET /executions.",
         )
-    steps = db_pg.step_list_by_workflow(conn, workflow_id)
-    snapshot = {
-        "captured_at": datetime.now(timezone.utc).isoformat(),
-        "workflow_id": workflow_id,
-        "steps": [
-            {
-                "id": s["id"],
-                "order_index": s["order_index"],
-                "model": s["model"],
-                "prompt": s["prompt"],
-                "completion_criteria": s["completion_criteria"],
-                "context_strategy": s["context_strategy"],
-                "requires_approval": s.get("requires_approval", False),
-            }
-            for s in steps
-        ],
-    }
-    execution_id = db_pg.execution_create(conn, workflow_id, snapshot)
+    execution_id = db_pg.execution_create(conn, workflow_id)
     thread = threading.Thread(target=run_execution, args=(execution_id,), daemon=True)
     thread.start()
     return ExecuteResponse(execution_id=execution_id)
@@ -118,7 +100,7 @@ def update_workflow(
     if db_pg.workflow_has_executions(conn, workflow_id):
         raise HTTPException(
             status_code=400,
-            detail="Workflow cannot be edited because executions already exist. Create a new workflow instead.",
+            detail="Workflow is immutable: executions exist. Create a new workflow to modify.",
         )
     if payload.name is not None:
         db_pg.workflow_update(conn, workflow_id, payload.name)
@@ -136,7 +118,7 @@ def delete_workflow(
     if db_pg.workflow_has_executions(conn, workflow_id):
         raise HTTPException(
             status_code=400,
-            detail="Workflow cannot be deleted because executions already exist.",
+            detail="Workflow cannot be deleted: executions exist.",
         )
     db_pg.workflow_delete(conn, workflow_id)
 
@@ -152,7 +134,7 @@ def create_step(
     if db_pg.workflow_has_executions(conn, workflow_id):
         raise HTTPException(
             status_code=400,
-            detail="Workflow cannot be edited because executions already exist. Create a new workflow instead.",
+            detail="Workflow is immutable: executions exist.",
         )
     step_id = db_pg.step_create(
         conn,
@@ -162,7 +144,6 @@ def create_step(
         payload.prompt,
         payload.completion_criteria,
         payload.context_strategy.value,
-        getattr(payload, "requires_approval", False),
     )
     s = db_pg.step_get(conn, step_id)
     return StepRead(**s)
@@ -179,7 +160,7 @@ def update_step(
     if db_pg.workflow_has_executions(conn, workflow_id):
         raise HTTPException(
             status_code=400,
-            detail="Workflow cannot be edited because executions already exist. Create a new workflow instead.",
+            detail="Workflow is immutable: executions exist.",
         )
     s = db_pg.step_get(conn, step_id)
     if not s or s["workflow_id"] != workflow_id:
@@ -189,8 +170,7 @@ def update_step(
     prompt = payload.prompt if payload.prompt is not None else s["prompt"]
     completion_criteria = payload.completion_criteria if payload.completion_criteria is not None else s["completion_criteria"]
     context_strategy = (payload.context_strategy.value if payload.context_strategy is not None else s["context_strategy"])
-    requires_approval = payload.requires_approval if payload.requires_approval is not None else s.get("requires_approval", False)
-    db_pg.step_update(conn, step_id, workflow_id, order_index, model, prompt, completion_criteria, context_strategy, requires_approval)
+    db_pg.step_update(conn, step_id, workflow_id, order_index, model, prompt, completion_criteria, context_strategy)
     s = db_pg.step_get(conn, step_id)
     return StepRead(**s)
 
@@ -205,7 +185,7 @@ def delete_step(
     if db_pg.workflow_has_executions(conn, workflow_id):
         raise HTTPException(
             status_code=400,
-            detail="Workflow cannot be edited because executions already exist. Create a new workflow instead.",
+            detail="Workflow is immutable: executions exist.",
         )
     s = db_pg.step_get(conn, step_id)
     if not s or s["workflow_id"] != workflow_id:

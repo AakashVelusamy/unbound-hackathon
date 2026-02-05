@@ -37,6 +37,4 @@ export const api = {
     request(workflowId != null ? `/executions?workflow_id=${workflowId}` : '/executions'),
   getExecution: (id) => request(`/executions/${id}`),
   getExecutionAttempts: (id) => request(`/executions/${id}/attempts`),
-  approveExecution: (id, body = {}) =>
-    request(`/executions/${id}/approve`, { method: 'POST', body: JSON.stringify(body) }),
 }

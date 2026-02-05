@@ -14,7 +14,6 @@ class StepAttemptRead(BaseModel):
     response: str | None
     criteria_passed: bool | None
     failure_reason: str | None
-    failure_type: str | None = None
     tokens_used: int | None
     created_at: datetime
 
@@ -30,8 +29,6 @@ class WorkflowExecutionRead(BaseModel):
     current_step_index: int | None
     started_at: datetime | None
     finished_at: datetime | None
-    workflow_definition_snapshot: dict | None = None
-    narrative: str | None = None
     step_attempts: list[StepAttemptRead] = []
 
     class Config:

@@ -64,11 +64,6 @@ export default function StepCard({ step, workflowId, immutable }) {
           <span className="rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
             Retry budget: {step.completion_criteria?.max_retries ?? 3}
           </span>
-          {step.requires_approval && (
-            <span className="rounded-lg bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-800">
-              Approval gate
-            </span>
-          )}
         </div>
       </div>
       {!immutable && (
