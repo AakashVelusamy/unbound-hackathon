@@ -38,18 +38,18 @@ export default function WorkflowForm() {
   }
 
   return (
-    <div className="max-w-xl">
-      <h1 className="font-display text-2xl font-bold text-surface">
+    <div className="max-w-xl space-y-6">
+      <h1 className="font-display text-3xl font-bold tracking-tight text-surface">
         {isEdit ? 'Edit workflow' : 'New workflow'}
       </h1>
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {immutable && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 shadow-sm">
             This workflow has runs. It can’t be edited. Create a new workflow to change the definition.
           </div>
         )}
         {error && !immutable && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 shadow-sm">
             {error}
           </div>
         )}
@@ -63,7 +63,7 @@ export default function WorkflowForm() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="My workflow"
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0"
             disabled={immutable}
           />
         </div>
@@ -71,14 +71,14 @@ export default function WorkflowForm() {
           <button
             type="submit"
             disabled={loading || immutable}
-            className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-600 disabled:opacity-50"
+            className="rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-brand-600 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
           >
             {loading ? 'Saving…' : isEdit ? 'Save' : 'Create'}
           </button>
           <button
             type="button"
             onClick={() => navigate(isEdit ? `/workflows/${id}` : '/')}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
           >
             Cancel
           </button>

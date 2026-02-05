@@ -8,15 +8,15 @@ import ExecutionDetail from './pages/ExecutionDetail'
 function App() {
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
           <NavLink
             to="/"
-            className="font-display text-xl font-bold tracking-tight text-surface"
+            className="font-display text-xl font-bold tracking-tight text-surface transition hover:text-brand-600"
           >
             Agentic Workflow Builder
           </NavLink>
-          <nav className="flex gap-6">
+          <nav className="flex gap-8">
             <NavLink
               to="/"
               className={({ isActive }) =>
@@ -29,7 +29,7 @@ function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-8">
+      <main className="mx-auto max-w-6xl px-5 py-10">
         <Routes>
           <Route path="/" element={<WorkflowList />} />
           <Route path="/workflows/new" element={<WorkflowForm />} />

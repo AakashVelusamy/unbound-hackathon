@@ -73,11 +73,12 @@ def step_create(
     prompt: str,
     completion_criteria: dict[str, Any],
     context_strategy: str,
+    requires_approval: bool = False,
 ) -> int:
     return _execute_returning_int(
         conn,
-        "SELECT step_create(%s, %s, %s, %s, %s::jsonb, %s)",
-        (workflow_id, order_index, model, prompt, json.dumps(completion_criteria), context_strategy),
+        "SELECT step_create(%s, %s, %s, %s, %s::jsonb, %s, %s)",
+        (workflow_id, order_index, model, prompt, json.dumps(completion_criteria), context_strategy, requires_approval),
     )
 
 
@@ -90,11 +91,12 @@ def step_update(
     prompt: str,
     completion_criteria: dict[str, Any],
     context_strategy: str,
+    requires_approval: bool | None = None,
 ) -> None:
     _execute(
         conn,
-        "SELECT step_update(%s, %s, %s, %s, %s, %s::jsonb, %s)",
-        (step_id, workflow_id, order_index, model, prompt, json.dumps(completion_criteria), context_strategy),
+        "SELECT step_update(%s, %s, %s, %s, %s, %s::jsonb, %s, %s)",
+        (step_id, workflow_id, order_index, model, prompt, json.dumps(completion_criteria), context_strategy, requires_approval),
     )
 
 
@@ -119,8 +121,10 @@ def execution_get_attempts(conn, execution_id: int) -> list[dict]:
 
 
 # Phase 3
-def execution_create(conn, workflow_id: int) -> int:
-    return _execute_returning_int(conn, "SELECT execution_create(%s)", (workflow_id,))
+def execution_create(conn, workflow_id: int, snapshot: dict | None = None) -> int:
+    import json
+    js = json.dumps(snapshot) if snapshot else None
+    return _execute_returning_int(conn, "SELECT execution_create(%s, %s::jsonb)", (workflow_id, js))
 
 
 def execution_update(
@@ -148,14 +152,15 @@ def step_attempt_insert(
     response: str | None = None,
     criteria_passed: bool | None = None,
     failure_reason: str | None = None,
+    failure_type: str | None = None,
     tokens_used: int | None = None,
 ) -> int:
     return _execute_returning_int(
         conn,
-        "SELECT step_attempt_insert(%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+        "SELECT step_attempt_insert(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
         (
             execution_id, step_id, attempt_number, status,
-            prompt_sent, response, criteria_passed, failure_reason, tokens_used,
+            prompt_sent, response, criteria_passed, failure_reason, failure_type, tokens_used,
         ),
     )
 
@@ -167,10 +172,11 @@ def step_attempt_update(
     response: str | None = None,
     criteria_passed: bool | None = None,
     failure_reason: str | None = None,
+    failure_type: str | None = None,
     tokens_used: int | None = None,
 ) -> None:
     _execute(
         conn,
-        "SELECT step_attempt_update(%s, %s, %s, %s, %s, %s)",
-        (attempt_id, status, response, criteria_passed, failure_reason, tokens_used),
+        "SELECT step_attempt_update(%s, %s, %s, %s, %s, %s, %s)",
+        (attempt_id, status, response, criteria_passed, failure_reason, failure_type, tokens_used),
     )

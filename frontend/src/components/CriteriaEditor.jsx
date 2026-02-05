@@ -17,7 +17,7 @@ export default function CriteriaEditor({ value, onChange }) {
   const setMaxRetries = (n) => onChange({ ...value, max_retries: Math.max(0, parseInt(n, 10) || 0) })
 
   return (
-    <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+    <div className="space-y-5 rounded-2xl border border-slate-200 bg-slate-50/60 p-5 shadow-sm">
       <div>
         <label className="block text-sm font-medium text-slate-700">Criteria type</label>
         <select
@@ -70,16 +70,27 @@ export default function CriteriaEditor({ value, onChange }) {
         </div>
       )}
 
-      <div>
-        <label className="block text-sm font-medium text-slate-700">Max retries per step</label>
-        <input
-          type="number"
-          min={0}
-          max={10}
-          value={maxRetries}
-          onChange={(e) => setMaxRetries(e.target.value)}
-          className="mt-1 w-24 rounded-lg border border-slate-300 px-3 py-2 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-        />
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <h3 className="text-sm font-semibold text-slate-800">Retry budget</h3>
+        <p className="mt-0.5 text-xs text-slate-500">Max retries per step before failing</p>
+        <div className="mt-3 flex items-center gap-4">
+          <input
+            type="range"
+            min={0}
+            max={10}
+            value={maxRetries}
+            onChange={(e) => setMaxRetries(e.target.value)}
+            className="h-2 w-32 flex-1 max-w-[12rem] cursor-pointer appearance-none rounded-full bg-slate-200 accent-brand-500"
+          />
+          <input
+            type="number"
+            min={0}
+            max={10}
+            value={maxRetries}
+            onChange={(e) => setMaxRetries(e.target.value)}
+            className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-center text-sm font-medium focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          />
+        </div>
       </div>
     </div>
   )

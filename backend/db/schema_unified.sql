@@ -1,12 +1,12 @@
--- Agentic Workflow Builder — PostgreSQL schema (fresh database)
+-- Agentic Workflow Builder — Unified PostgreSQL schema (safe for existing data)
 -- Run once in Supabase: SQL Editor → New query → paste this file → Run.
--- For a new project: create DB, then run this entire file.
+-- Safe to run on existing DBs: uses ADD COLUMN IF NOT EXISTS and CREATE OR REPLACE.
 
 -- =============================================================================
--- TABLES
+-- TABLES (CREATE IF NOT EXISTS — no-op if already exist)
 -- =============================================================================
 
-CREATE TABLE workflows (
+CREATE TABLE IF NOT EXISTS workflows (
     id              SERIAL PRIMARY KEY,
     name            VARCHAR(255) NOT NULL,
     workflow_version INTEGER NOT NULL DEFAULT 1,
@@ -14,7 +14,7 @@ CREATE TABLE workflows (
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp()
 );
 
-CREATE TABLE steps (
+CREATE TABLE IF NOT EXISTS steps (
     id                  SERIAL PRIMARY KEY,
     workflow_id         INTEGER NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
     order_index         INTEGER NOT NULL,
@@ -25,7 +25,7 @@ CREATE TABLE steps (
     requires_approval   BOOLEAN NOT NULL DEFAULT false
 );
 
-CREATE TABLE workflow_executions (
+CREATE TABLE IF NOT EXISTS workflow_executions (
     id                          SERIAL PRIMARY KEY,
     workflow_id                 INTEGER NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
     status                      VARCHAR(32) NOT NULL DEFAULT 'pending',
@@ -35,7 +35,7 @@ CREATE TABLE workflow_executions (
     workflow_definition_snapshot JSONB
 );
 
-CREATE TABLE step_attempts (
+CREATE TABLE IF NOT EXISTS step_attempts (
     id                      SERIAL PRIMARY KEY,
     workflow_execution_id   INTEGER NOT NULL REFERENCES workflow_executions(id) ON DELETE CASCADE,
     step_id                 INTEGER NOT NULL REFERENCES steps(id) ON DELETE CASCADE,
@@ -51,12 +51,37 @@ CREATE TABLE step_attempts (
 );
 
 -- =============================================================================
+-- ADD COLUMNS (for existing DBs created from older schema — safe, no-op if present)
+-- =============================================================================
+
+ALTER TABLE workflows
+  ADD COLUMN IF NOT EXISTS workflow_version INTEGER DEFAULT 1;
+UPDATE workflows SET workflow_version = COALESCE(workflow_version, 1) WHERE workflow_version IS NULL;
+
+ALTER TABLE steps
+  ADD COLUMN IF NOT EXISTS requires_approval BOOLEAN DEFAULT false;
+UPDATE steps SET requires_approval = COALESCE(requires_approval, false) WHERE requires_approval IS NULL;
+
+ALTER TABLE workflow_executions
+  ADD COLUMN IF NOT EXISTS workflow_definition_snapshot JSONB;
+
+ALTER TABLE step_attempts
+  ADD COLUMN IF NOT EXISTS failure_type VARCHAR(32);
+
+-- =============================================================================
+-- DROP FUNCTIONS WHOSE RETURN TYPE CHANGED (so CREATE OR REPLACE can succeed)
+-- =============================================================================
+DROP FUNCTION IF EXISTS workflow_get(integer);
+DROP FUNCTION IF EXISTS execution_get(integer);
+DROP FUNCTION IF EXISTS execution_get_attempts(integer);
+
+-- =============================================================================
 -- INDEXES
 -- =============================================================================
 
-CREATE INDEX idx_steps_workflow_id ON steps(workflow_id);
-CREATE INDEX idx_workflow_executions_workflow_id ON workflow_executions(workflow_id);
-CREATE INDEX idx_step_attempts_execution_id ON step_attempts(workflow_execution_id);
+CREATE INDEX IF NOT EXISTS idx_steps_workflow_id ON steps(workflow_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_executions_workflow_id ON workflow_executions(workflow_id);
+CREATE INDEX IF NOT EXISTS idx_step_attempts_execution_id ON step_attempts(workflow_execution_id);
 
 -- =============================================================================
 -- WORKFLOW FUNCTIONS
@@ -395,6 +420,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS tr_steps_updated ON steps;
 CREATE TRIGGER tr_steps_updated
     AFTER INSERT OR UPDATE OR DELETE ON steps
     FOR EACH ROW EXECUTE PROCEDURE set_workflow_updated_at();

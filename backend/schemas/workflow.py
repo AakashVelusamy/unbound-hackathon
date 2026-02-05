@@ -15,6 +15,7 @@ class StepBase(BaseModel):
     prompt: str = Field(..., min_length=1)
     completion_criteria: dict[str, Any] = Field(...)  # opaque JSON
     context_strategy: ContextStrategy = ContextStrategy.FULL
+    requires_approval: bool = False
 
 
 class StepCreate(StepBase):
@@ -38,6 +39,7 @@ class StepUpdate(BaseModel):
     prompt: str | None = None
     completion_criteria: dict[str, Any] | None = None
     context_strategy: ContextStrategy | None = None
+    requires_approval: bool | None = None
 
 
 # --- Workflow ---
@@ -56,6 +58,7 @@ class WorkflowRead(WorkflowBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    workflow_version: int | None = None
     steps: list[StepRead] = []
 
     class Config:

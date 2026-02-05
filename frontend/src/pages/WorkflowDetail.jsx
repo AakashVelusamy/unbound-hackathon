@@ -15,6 +15,8 @@ import {
 } from '@dnd-kit/sortable'
 import { api } from '../api'
 import StepCard from '../components/StepCard'
+import { downloadJson, workflowExportFilename } from '../lib/export'
+import { estimateWorkflowCredits, formatCost } from '../lib/cost'
 
 export default function WorkflowDetail() {
   const { id: workflowId } = useParams()
@@ -72,6 +74,26 @@ export default function WorkflowDetail() {
       .finally(() => setRunning(false))
   }
 
+  const handleExport = () => {
+    if (!workflow) return
+    const payload = {
+      name: workflow.name,
+      id: workflow.id,
+      created_at: workflow.created_at,
+      updated_at: workflow.updated_at,
+      steps: (workflow.steps ?? []).map((s) => ({
+        id: s.id,
+        order_index: s.order_index,
+        model: s.model,
+        prompt: s.prompt,
+        completion_criteria: s.completion_criteria,
+        context_strategy: s.context_strategy,
+      })),
+      exported_at: new Date().toISOString(),
+    }
+    downloadJson(workflowExportFilename(workflow.name), payload)
+  }
+
   const handleDragEnd = (event) => {
     const { active, over } = event
     if (!over || active.id === over.id || !workflow?.steps?.length || immutable) return
@@ -101,8 +123,8 @@ export default function WorkflowDetail() {
 
   if (loading && !workflow) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
       </div>
     )
   }
@@ -118,71 +140,108 @@ export default function WorkflowDetail() {
   if (!workflow) return null
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+    <div className="space-y-8">
+      <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <Link
             to="/"
-            className="text-sm font-medium text-slate-500 hover:text-slate-700"
+            className="text-sm font-medium text-slate-500 transition hover:text-slate-700"
           >
             ← Workflows
           </Link>
-          <h1 className="mt-1 font-display text-2xl font-bold text-surface">
+          <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-surface">
             {workflow.name}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-slate-500">
             {steps.length} step{steps.length !== 1 ? 's' : ''}
             {hasExecutions && (
               <> · {executions.length} run{executions.length !== 1 ? 's' : ''}</>
             )}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-3">
           <button
             type="button"
             onClick={handleRun}
             disabled={running || steps.length === 0}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"
+            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-emerald-700 hover:shadow-lg disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
           >
             {running ? 'Starting…' : 'Run workflow'}
           </button>
           <Link
             to={`/workflows/${workflowId}/edit`}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
           >
             Edit workflow
           </Link>
           {!immutable && (
             <Link
               to={`/workflows/${workflowId}/steps/new`}
-              className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-brand-600"
+              className="rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-brand-600 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
             >
               + Add step
             </Link>
           )}
+          <button
+            type="button"
+            onClick={handleExport}
+            className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
+          >
+            Export (JSON)
+          </button>
         </div>
       </div>
 
       {immutable && (
-        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800 shadow-sm">
           This workflow has been run. Name, steps, and order can’t be changed.
         </div>
       )}
 
       {reordering && (
-        <div className="mb-4 flex items-center gap-2 text-sm text-slate-600">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
+        <div className="flex items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-800">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />
           Updating step order…
         </div>
       )}
 
+      {/* Retry budget + Credits estimated */}
+      {steps.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-700">Retry budget & credits estimated</h2>
+          <div className="mt-3 flex flex-wrap gap-6">
+            <div>
+              <span className="font-medium text-surface">
+                Total retry budget: {steps.reduce((s, st) => s + (st.completion_criteria?.max_retries ?? 3), 0)}
+              </span>
+              <span className="ml-1 text-sm text-slate-500">max attempts across steps</span>
+            </div>
+            {(() => {
+              const { totalTokens, totalCost } = estimateWorkflowCredits(steps)
+              return (
+                <>
+                  <div>
+                    <span className="font-medium text-surface">~{totalTokens.toLocaleString()}</span>
+                    <span className="ml-1 text-sm text-slate-500">tokens estimated</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-emerald-600">{formatCost(totalCost)}</span>
+                    <span className="ml-1 text-sm text-slate-500">credits estimated</span>
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+        </div>
+      )}
+
       {steps.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-12 text-center">
+        <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-white p-14 text-center shadow-sm">
           <p className="text-slate-500">No steps yet.</p>
           {!immutable && (
             <Link
               to={`/workflows/${workflowId}/steps/new`}
-              className="mt-4 inline-block text-brand-600 hover:text-brand-700"
+              className="mt-5 inline-block rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-brand-600"
             >
               Add first step →
             </Link>
@@ -198,7 +257,7 @@ export default function WorkflowDetail() {
             items={steps.map((s) => String(s.id))}
             strategy={verticalListSortingStrategy}
           >
-            <ul className="space-y-3">
+            <ul className="space-y-4">
               {steps.map((step) => (
                 <li key={step.id}>
                   <StepCard
@@ -215,25 +274,27 @@ export default function WorkflowDetail() {
 
       {/* Execution history */}
       {executions.length > 0 && (
-        <section className="mt-10">
+        <section className="space-y-4">
           <h2 className="font-display text-lg font-semibold text-surface">Execution history</h2>
-          <ul className="mt-3 space-y-2">
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {[...executions]
               .sort((a, b) => (b.id ?? 0) - (a.id ?? 0))
               .map((ex) => (
                 <li key={ex.id}>
                   <Link
                     to={`/executions/${ex.id}`}
-                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 transition hover:border-slate-300 hover:shadow-sm"
+                    className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm transition hover:border-slate-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
                   >
-                    <span className="text-sm font-medium text-slate-800">Run #{ex.id}</span>
+                    <span className="font-medium text-slate-800">Run #{ex.id}</span>
                     <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
                         ex.status === 'completed'
                           ? 'bg-emerald-100 text-emerald-800'
                           : ex.status === 'failed'
                             ? 'bg-red-100 text-red-800'
-                            : 'bg-amber-100 text-amber-800'
+                            : ex.status === 'paused'
+                              ? 'bg-violet-100 text-violet-800'
+                              : 'bg-amber-100 text-amber-800'
                       }`}
                     >
                       {ex.status}

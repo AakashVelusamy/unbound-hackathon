@@ -24,17 +24,17 @@ export default function StepCard({ step, workflowId, immutable }) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-stretch gap-3 rounded-xl border bg-white shadow-sm transition-all ${
+      className={`group flex items-stretch gap-3 rounded-2xl border bg-white shadow-sm transition-all duration-200 ${
         isDragging
           ? 'z-50 scale-[1.02] border-brand-400 shadow-lg ring-2 ring-brand-200'
-          : 'border-slate-200 hover:border-slate-300 hover:shadow'
+          : 'border-slate-200 hover:border-slate-300 hover:shadow-md'
       } ${immutable ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
     >
       {!immutable && (
         <div
           {...attributes}
           {...listeners}
-          className="flex flex-col justify-center px-3 text-slate-400 hover:text-slate-600"
+          className="flex flex-col justify-center px-3 text-slate-400 transition hover:text-slate-600"
           aria-label="Drag to reorder"
         >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,12 +53,20 @@ export default function StepCard({ step, workflowId, immutable }) {
           {step.prompt}
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
-          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+          <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
             {step.context_strategy ?? 'full'}
           </span>
           {step.completion_criteria?.type && (
-            <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+            <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
               {step.completion_criteria.type}
+            </span>
+          )}
+          <span className="rounded-lg bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
+            Retry budget: {step.completion_criteria?.max_retries ?? 3}
+          </span>
+          {step.requires_approval && (
+            <span className="rounded-lg bg-violet-100 px-2.5 py-1 text-xs font-medium text-violet-800">
+              Approval gate
             </span>
           )}
         </div>
@@ -67,7 +75,7 @@ export default function StepCard({ step, workflowId, immutable }) {
         <div className="flex items-center gap-1 border-l border-slate-100 pl-2">
           <Link
             to={`/workflows/${workflowId}/steps/${step.id}/edit`}
-            className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 opacity-0 transition hover:bg-slate-100 hover:text-slate-900 group-hover:opacity-100"
+            className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 opacity-0 transition duration-200 hover:bg-slate-100 hover:text-slate-900 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             Edit
           </Link>
